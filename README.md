@@ -7,7 +7,7 @@ python3 main.py
 
 ## Answering questions before I get them
 
-Q: So.. how do I use this?
+Q: So.. how do I use this?\
 A: I made this repostory as a placeholder, so the documentation will be avaiable when I'm finished.
 
 Q: Why did you make this?\
