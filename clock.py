@@ -205,7 +205,6 @@ class ClockEmulator:
         self.back = ClockEmulator.Side(False)
 
         self.rotation = 0 # 0 = 0d, 1 = 45d, 2 = 90d, 3 = 135d (clockwise) (works glitchy) # TODO: fix this
-        # self.focus = 0 # 0 = front, 1 = back
         self.side = 0 # 0 = front, 1 = back
 
     def reset(self) -> None:
@@ -246,6 +245,8 @@ class ClockEmulator:
                 elif pin == "\\":
                     pin = "BACKSLASH"
 
+                self.pins = [False, False,
+                             False, False]
                 self.set_pins(self.side, PinMappings[pin].value)
                 self.move_with(amount * direction, self.side, MoveMappings[pin].value)
 
@@ -305,9 +306,17 @@ class ClockEmulator:
     def set_pins(self, side, method):
 
         if side == 0:
-            self.pins = self.rotate_pins(method, True)
+
+            self.pins = method
+
+            for _ in range(self.rotation):
+                self.pins = self.rotate_pins(method, True)
         elif side == 1:
-            self.pins = self.rotate_pins([not method[1], not method[0], not method[3], not method[2]], False)
+
+            self.pins = [not method[1], not method[0], not method[3], not method[2]]
+
+            for _ in range(self.rotation):
+                self.pins = self.rotate_pins([not method[1], not method[0], not method[3], not method[2]], False)
 
 
     def move_with(self, amount, side, method):  # this code sucks ngl
@@ -318,6 +327,8 @@ class ClockEmulator:
         for _ in range(self.rotation):
             relative_front = self.rotate_clock(relative_front, True)
             relative_back = self.rotate_clock(relative_back, False)
+
+        print(relative_front)
 
         for i, rule in enumerate(relative_front):
             if side == 0:
@@ -351,25 +362,33 @@ class ClockEmulator:
             self.front.states[i] %= 12
 
 
-    def get_piece(self, side: int, piece: int) -> int:
+    def get_piece(self, side: int, piece: int, rotated: bool) -> int:
 
-        if side == 0:
+        if rotated:
 
-            k = self.front.states
+            if side == 0:
 
-            for _ in range(self.rotation):
-                k = self.rotate_clock(k, True)
+                k = self.front.states
 
-        elif side == 1:
+                for _ in range(self.rotation):
+                    k = self.rotate_clock(k, True)
 
-            k = self.back.states
+            elif side == 1:
 
-            for _ in range(self.rotation):
-                k = self.rotate_clock(k, False)
+                k = self.back.states
 
+                for _ in range(self.rotation):
+                    k = self.rotate_clock(k, False)
+
+            else:
+
+                raise ValueError("Side must be 0 or 1")
         else:
 
-            raise ValueError("Side must be 0 or 1")
+            if side == 0:
+                k = self.front.states
+            elif side == 1:
+                k = self.back.states
 
         return k[piece]
 

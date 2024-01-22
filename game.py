@@ -117,7 +117,7 @@ class Game:
 
         for i in range(self.clock.front.states.__len__() + self.clock.back.states.__len__()):
 
-            state = self.clock.get_piece(int(not i < 9), i - 9 if i >= 9 else i)
+            state = self.clock.get_piece(int(not i < 9), i - 9 if i >= 9 else i, False)
 
             state += 6
             state = -state
