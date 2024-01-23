@@ -7,7 +7,7 @@ python3 main.py
 
 ## Requirements
 - python 3.10.+
-- pygame 2.1.2
+- pygame 2.5.2
 
 ## Answering questions before I get them
 
