@@ -97,27 +97,28 @@ class Game:
         self.r = ReconstructFileHandler()
         self.r.read(self.clock)
 
-        self.init_rotation = 0
-
 
     def blit_text(self, text: str, pos, color=(255, 255, 255)):
         self.display.blit(self.font.render(text, True, color), pos)
 
     def draw_clock(self):
 
-        fx = 150
-        fy = 150
+        fx = 45 # :flushed:
+        fy = 44
 
         # clocks
         clock_radius = 23
         dot_radius = 2
 
-        pygame.draw.rect(self.display, (255, 255, 255), (0, 0, 300, 400))
-        pygame.draw.rect(self.display, (0, 0, 0), (300, 0, 500, 400))
+        white_clock_surface = pygame.Surface((200, 200))
+        black_clock_surface = pygame.Surface((200, 200))
 
-        for i in range(self.clock.front.states.__len__() + self.clock.back.states.__len__()):
+        pygame.draw.rect(white_clock_surface, (255, 255, 255), (0, 0, 200, 200)) # draw bg
+        pygame.draw.rect(black_clock_surface, (0, 0, 0), (0, 0, 200, 200))
 
-            state = self.clock.get_piece(int(not i < 9), i - 9 if i >= 9 else i, False)
+        for i in range(self.clock.front.states.__len__() + self.clock.back.states.__len__()): # clock states
+
+            state = self.clock.get_piece(int(i >= 9), i - 9 if i >= 9 else i, False)
 
             state += 6
             state = -state
@@ -125,8 +126,12 @@ class Game:
 
             x, y = (i % 3 * 55 + fx), i // 3 * 55 + fy
             color = (0, 0, 0)
+
+            surface = white_clock_surface
+
             if i >= 9:
-                x += 195
+                # x += 195
+                surface = black_clock_surface
                 y -= 55 * 3
                 color = (255, 255, 255)
 
@@ -136,56 +141,56 @@ class Game:
                     continue
 
                 pointer_color = tuple(min(color[i] + 30, 255) for i in range(3))
-                draw_antialias_circle(self.display, pointer_color,
+                draw_antialias_circle(surface, pointer_color,
                                            x + math.sin(j * (math.pi / 6)) * (clock_radius + dot_radius * 0),
                                            y + math.cos(j * (math.pi / 6)) * (clock_radius + dot_radius * 0),
                                            dot_radius)
 
-            draw_antialias_circle(self.display, color, x, y, clock_radius)
+            draw_antialias_circle(surface, color, x, y, clock_radius)
 
-            draw_aa_pie(self.display, (255, 255, 255) if i < 9 else (0, 0, 0), (x, y),
+            draw_aa_pie(surface, (255, 255, 255) if i < 9 else (0, 0, 0), (x, y),
                              (x + math.sin(state * (math.pi / 6)) * clock_radius,
                               y + math.cos(state * (math.pi / 6)) * clock_radius), 3)
 
-            draw_polygon(self.display,
+            draw_polygon(surface,
                              [(x, y - clock_radius - 2 + 1), (x - 2, y - 5 - clock_radius + 1), (x + 2, y - 5 - clock_radius + 1)],
                              (255, 0, 0))
 
 
-        # pins
-        front_pins = self.clock.pins
-        back_pins = _invert_pins(front_pins)
+        for j in range(2): # draw pins
 
-        for i in range(front_pins.__len__()):
+            pins = self.clock.pins
+            surface = white_clock_surface
 
-            color = (80, 80, 80)
+            if j == 1:
+                pins = _invert_pins(pins)
+                surface = black_clock_surface
 
-            if front_pins[i]:
-                color = (255, 255, 0)
+            for k in range(pins.__len__()):
 
-            draw_antialias_circle(self.display, color, i % 2 * 55 + fx + 28, i // 2 * 55 + fy + 28, 9)
+                color = (80, 80, 80)
 
-        for i in range(back_pins.__len__()):
+                if pins[k]:
+                    color = (255, 255, 0)
 
-            color = (80, 80, 80)
+                draw_antialias_circle(surface, color, k % 2 * 55 + fx + 28, k // 2 * 55 + fy + 28, 9)
 
-            if back_pins[i]:
-                color = (255, 255, 0)
+        white_clock_surface = pygame.transform.rotate(white_clock_surface, 90 * self.clock.rotation)
+        black_clock_surface = pygame.transform.rotate(black_clock_surface, -90 * self.clock.rotation)
 
-            draw_antialias_circle(self.display, color, i % 2 * 55 + fx + 28 + 194, i // 2 * 55 + fy + 28, 9)
-
+        self.display.blit(white_clock_surface, (0, 100))
+        self.display.blit(black_clock_surface, (200, 100))
 
 
     def draw(self):
 
-
         display = self.display
-        display.fill((0, 0, 0))
+        display.fill((50, 50, 50))
 
-        # self.blit_text("Clock Reconstructor", (5, 5))
+        self.blit_text("Clock Reconstructor", (5, 5))
 
         self.draw_clock()
-        self.blit_text(f"{self.frame}", (5, 45), (0, 0, 0))
+        self.blit_text(f"{self.frame}", (5, 45))
 
         pygame.display.update()
 
@@ -199,6 +204,8 @@ class Game:
                 if event.key == pygame.K_r:
                     self.r.state = "paused"
                     self.frame = 0
+                    self.clock.reset()
+                    self.r.read(self.clock)
 
                 if event.key == pygame.K_SPACE:
                     if self.r.state == "paused":
@@ -206,34 +213,38 @@ class Game:
                     elif self.r.state == "playing":
                         self.r.state = "paused"
 
-        for move in self.r.moves:
-
-            if move.start <= self.frame < move.end:
-
-                match = re.match(r'([A-Z\/\\]+)(\d+)([+-])', str(move.move), re.I)  # split scramble block
-
-                if match:
-                    items = match.groups()
-
-                    pin = items[0]
-                    amount = int(items[1])
-                    direction = items[2]
-
-                    amount /= (move.end - move.start)
-
-                    if move.side == 1:
-                        self.clock.convert_scramble("y2")
-
-                    self.clock.convert_scramble(f"{pin}{amount}{direction}")
-
-                    if move.side == 1:
-                        self.clock.convert_scramble("y2")
-
-                else:
-                    print(move.move, "???")
-                    self.clock.convert_scramble(move.move)
-
         if self.r.state == "playing":
+
+            for move in self.r.moves:
+
+                if move.start <= self.frame < move.end:
+
+                    match = re.match(r'([A-Z\/\\]+)(\d+)([+-])', str(move.move), re.I)  # split scramble block
+
+                    if match:
+                        items = match.groups()
+
+                        pin = items[0]
+                        amount = int(items[1])
+                        direction = items[2]
+
+                        amount /= (move.end - move.start)
+
+                        if move.side == 1: # todo: do this more efficiently
+                            self.clock.y2()
+
+                        # print(f"{pin}{amount}{direction}")
+
+                        self.clock.convert_scramble(f"{pin}{amount}{direction}")
+
+                        if move.side == 1:
+                            self.clock.y2()
+
+                    else: # if it's not a move or a amount that has to be divided
+
+                        # print(f"Unexpected move {move.move} found, assuming it's a rotation or pin instruction.")
+                        self.clock.convert_scramble(move.move)
+
             self.frame += 1
 
         return self.run

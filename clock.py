@@ -250,7 +250,7 @@ class ClockEmulator:
                 self.set_pins(self.side, PinMappings[pin].value)
                 self.move_with(amount * direction, self.side, MoveMappings[pin].value)
 
-                print(self.side, self.front.states, self.back.states)
+                # print(self.side, self.front.states, self.back.states)
 
 
             else:  # special cases
@@ -286,15 +286,9 @@ class ClockEmulator:
                     self.rotation %= 4
                     self.side = 0 if self.side == 1 else 1
 
-                elif pin == "y2": # TODO: y2 mid solve causes pins to go down ??
+                elif pin == "y2":
 
-                    if self.side == 0:
-                        self.side = 1
-
-                    elif self.side == 1:
-                        self.side = 0
-
-                    print("y2!", self.side)
+                    self.y2()
 
                 else:
 
@@ -310,13 +304,15 @@ class ClockEmulator:
             self.pins = method
 
             for _ in range(self.rotation):
-                self.pins = self.rotate_pins(method, True)
+                self.pins = self.rotate_pins(self.pins, True)
+            print("fin", self.pins)
+
         elif side == 1:
 
-            self.pins = [not method[1], not method[0], not method[3], not method[2]]
+            self.pins = _invert_pins(method)
 
             for _ in range(self.rotation):
-                self.pins = self.rotate_pins([not method[1], not method[0], not method[3], not method[2]], False)
+                self.pins = _invert_pins(self.rotate_pins(self.pins, False))
 
 
     def move_with(self, amount, side, method):  # this code sucks ngl
@@ -325,42 +321,50 @@ class ClockEmulator:
         relative_back = method[1]
 
         for _ in range(self.rotation):
-            relative_front = self.rotate_clock(relative_front, True)
-            relative_back = self.rotate_clock(relative_back, False)
+            relative_front = self.rotate_clock(relative_front, side == 1) # super weird that clockwise get switched here but idc it works
+            relative_back = self.rotate_clock(relative_back, side == 0)
 
         print(relative_front)
 
-        for i, rule in enumerate(relative_front):
+        for j, rule in enumerate(relative_front):
+
             if side == 0:
+
                 if rule == 1:
-                    self.front.states[i] += amount
-                elif rule == -1:
-                    assert False
-            elif side == 1:
-                if rule == 1:
-                    self.back.states[i] += amount
+                    self.front.states[j] += amount
                 elif rule == -1:
                     assert False
 
-            self.front.states[i] %= 12
-            self.back.states[i] %= 12
+            elif side == 1:
 
-        for i, rule in enumerate(relative_back):
+                if rule == 1:
+                    self.back.states[j] += amount
+                elif rule == -1:
+                    assert False
+
+            self.front.states[j] %= 12
+            self.back.states[j] %= 12
+
+        for k, rule in enumerate(relative_back):
 
             if side == 0:
+
                 if rule == -1:
-                    self.back.states[i] -= amount
+                    self.back.states[k] -= amount
                 elif rule == 1:
                     assert False
+
             elif side == 1:
+
                 if rule == -1:
-                    self.front.states[i] -= amount
+                    self.front.states[k] -= amount
                 elif rule == 1:
                     assert False
 
-            self.back.states[i] %= 12
-            self.front.states[i] %= 12
+            self.front.states[k] %= 12
+            self.back.states[k] %= 12
 
+        # print(self.front.states, self.back.states)
 
     def get_piece(self, side: int, piece: int, rotated: bool) -> int:
 
@@ -389,6 +393,8 @@ class ClockEmulator:
                 k = self.front.states
             elif side == 1:
                 k = self.back.states
+            else:
+                raise ValueError("Side must be 0 or 1")
 
         return k[piece]
 
@@ -400,10 +406,14 @@ class ClockEmulator:
 
         w = copy.deepcopy(matrix)
 
+        print("before", w)
+
         if clockwise:
             res = [w[6], w[3], w[0], w[7], w[4], w[1], w[8], w[5], w[2]]
         else:
             res = [w[2], w[5], w[8], w[1], w[4], w[7], w[0], w[3], w[6]]
+
+        print("after", res)
 
         return res
 
@@ -415,8 +425,19 @@ class ClockEmulator:
         w = copy.deepcopy(matrix)
 
         if clockwise:
-            res = [w[2], w[0], w[3], w[1]]
-        else:
             res = [w[1], w[3], w[0], w[2]]
+        else:
+            res = [w[2], w[0], w[3], w[1]]
 
         return res
+
+    def y2(self):
+
+        if self.side == 0:
+            self.side = 1
+
+        elif self.side == 1:
+            self.side = 0
+
+def _invert_pins(pins):
+    return [not pins[1], not pins[0], not pins[3], not pins[2]]
