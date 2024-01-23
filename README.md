@@ -5,6 +5,9 @@ Reconstructing Rubik's Clock solves with pygame.
 python3 main.py
 ```
 
+## Requirements
+- pygame 2.1.2
+
 ## Answering questions before I get them
 
 Q: So.. how do I use this?\
